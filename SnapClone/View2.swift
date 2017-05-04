@@ -14,7 +14,10 @@ class View2: UIViewController {
     var captureSession: AVCaptureSession?
     var stillImageOutput: AVCapturePhotoOutput?
     var previewLayer: AVCaptureVideoPreviewLayer?
+    var didtakePhoto = Bool()
+
     
+    @IBOutlet weak var tempImageView: UIImageView!
     @IBOutlet weak var cameraView: UIView!
     
     override func viewDidLoad() {
@@ -62,6 +65,81 @@ class View2: UIViewController {
 extension View2: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     
 }
+
+extension View2: AVCapturePhotoCaptureDelegate {
+    
+    func didPressTakePhoto() {
+        let settings = AVCapturePhotoSettings()
+        let previewPixelType = settings.availablePreviewPhotoPixelFormatTypes.first!
+        let previewFormat = [kCVPixelBufferPixelFormatTypeKey as String: previewPixelType,
+                             kCVPixelBufferWidthKey as String: 160,
+                             kCVPixelBufferHeightKey as String: 160,
+                             ]
+        settings.previewPhotoFormat = previewFormat
+        self.stillImageOutput?.capturePhoto(with: settings, delegate: self)
+    }
+    
+    func capture(_ captureOutput: AVCapturePhotoOutput, didFinishProcessingPhotoSampleBuffer photoSampleBuffer: CMSampleBuffer?, previewPhotoSampleBuffer: CMSampleBuffer?, resolvedSettings: AVCaptureResolvedPhotoSettings, bracketSettings: AVCaptureBracketedStillImageSettings?, error: Error?) {
+        
+        if let error = error {
+            print(error.localizedDescription)
+        }
+        
+        if let sampleBuffer = photoSampleBuffer, let previewBuffer = previewPhotoSampleBuffer, let dataImage = AVCapturePhotoOutput.jpegPhotoDataRepresentation(forJPEGSampleBuffer: sampleBuffer, previewPhotoSampleBuffer: previewBuffer) {
+            
+            guard let dataProvider = CGDataProvider(data: dataImage as CFData) else {
+                print("error with dataProvider")
+                return
+            }
+            guard let cgImageRef = CGImage.init(jpegDataProviderSource: dataProvider, decode: nil, shouldInterpolate: true, intent: CGColorRenderingIntent.defaultIntent) else {
+                print("error on cgImageref initialization")
+                return
+            }
+            
+            let image = UIImage(cgImage: cgImageRef, scale: 1.0, orientation: .right)
+            
+            tempImageView.image = image//UIImage(data: dataImage)
+            tempImageView.isHidden = false
+            
+            
+        } else {
+            print("\(photoSampleBuffer)")
+        }
+    }
+    
+    func didPressTakeAnother() {
+        
+        if didtakePhoto {
+            tempImageView.isHidden = true
+            didtakePhoto = false
+        } else {
+            captureSession?.startRunning()
+            didtakePhoto = true
+            didPressTakePhoto()
+        }
+    }
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        didPressTakeAnother()
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
